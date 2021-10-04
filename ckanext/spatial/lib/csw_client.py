@@ -7,6 +7,7 @@ import logging
 
 from owslib.etree import etree
 from owslib.fes import PropertyIsEqualTo, SortBy, SortProperty
+from ckanext.spatial.lib.ogcfilter import parse_constraints
 
 log = logging.getLogger(__name__)
 
@@ -73,13 +74,15 @@ class CswService(OwsService):
 
     def getrecords(self, qtype=None, keywords=[],
                    typenames="csw:Record", esn="brief",
-                   skip=0, count=10, outputschema="gmd", **kw):
+                   skip=0, count=10, outputschema="gmd",
+                   ogcfilter=None, **kw):
         from owslib.csw import namespaces
-        constraints = []
+        constraints = parse_constraints(ogcfilter) if ogcfilter else []
         csw = self._ows(**kw)
 
-        if qtype is not None:
-           constraints.append(PropertyIsEqualTo("dc:type", qtype))
+        if qtype is not None and not constraints:
+            constraints.append(PropertyIsEqualTo("dc:type", qtype))
+            # if ogcfilter isn't None, qtype will be ignored
 
         kwa = {
             "constraints": constraints,
@@ -101,13 +104,14 @@ class CswService(OwsService):
 
     def getidentifiers(self, qtype=None, typenames="csw:Record", esn="brief",
                        keywords=[], limit=None, page=10, outputschema="gmd",
-                       startposition=0, cql=None, **kw):
+                       startposition=0, cql=None, ogcfilter=None, **kw):
         from owslib.csw import namespaces
-        constraints = []
+        constraints = parse_constraints(ogcfilter) if ogcfilter else []
         csw = self._ows(**kw)
 
-        if qtype is not None:
-           constraints.append(PropertyIsEqualTo("dc:type", qtype))
+        if qtype is not None and not constraints:
+            constraints.append(PropertyIsEqualTo("dc:type", qtype))
+            # if ogcfilter isn't None, qtype will be ignored
 
         kwa = {
             "constraints": constraints,
