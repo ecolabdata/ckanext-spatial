@@ -75,7 +75,7 @@ class CswService(OwsService):
     def getrecords(self, qtype=None, keywords=[],
                    typenames="csw:Record", esn="brief",
                    skip=0, count=10, outputschema="gmd",
-                   ogcfilter=None, **kw):
+                   ogcfilter=None, maxtrials=1, **kw):
         from owslib.csw import namespaces
         constraints = parse_constraints(ogcfilter) if ogcfilter else []
         csw = self._ows(**kw)
@@ -94,17 +94,37 @@ class CswService(OwsService):
             "sortby": self.sortby
             }
         log.info('Making CSW request: getrecords2 %r', kwa)
-        csw.getrecords2(**kwa)
-        if csw.exceptionreport:
-            err = 'Error getting records: %r' % \
-                  csw.exceptionreport.exceptions
-            #log.error(err)
-            raise CswError(err)
+        
+        x = maxtrials
+        # try to get a valid result until maxtrials is reached            
+        while True:
+            errcsw = None
+            try:
+                csw.getrecords2(**kwa)
+            except Exception as err:
+                errcsw = err
+            if csw.exceptionreport or errcsw:
+                x -= 1
+                if x == 0:
+                    err = 'Error getting records: %r' % \
+                      csw.exceptionreport.exceptions \
+                      if csw.exceptionreport else errcsw
+                    raise CswError(err)  
+            elif csw.results['returned'] != len(csw.records):
+            # case when numberOfRecordsReturned says some records were
+            # returned, but there was none or less for some reason
+                x -= 1
+                if x == 0:
+                    break
+            else:
+                break
+                
         return [self._xmd(r) for r in list(csw.records.values())]
 
     def getidentifiers(self, qtype=None, typenames="csw:Record", esn="brief",
                        keywords=[], limit=None, page=10, outputschema="gmd",
-                       startposition=0, cql=None, ogcfilter=None, **kw):
+                       startposition=0, cql=None, ogcfilter=None,
+                       maxtrials=1, **kw):
         from owslib.csw import namespaces
         constraints = parse_constraints(ogcfilter) if ogcfilter else []
         csw = self._ows(**kw)
@@ -128,12 +148,29 @@ class CswService(OwsService):
         while True:
             log.info('Making CSW request: getrecords2 %r', kwa)
 
-            csw.getrecords2(**kwa)
-            if csw.exceptionreport:
-                err = 'Error getting identifiers: %r' % \
-                      csw.exceptionreport.exceptions
-                #log.error(err)
-                raise CswError(err)
+            x = maxtrials
+            # try to get a valid result until maxtrials is reached            
+            while True:
+                errcsw = None
+                try:
+                    csw.getrecords2(**kwa)
+                except Exception as err:
+                    errcsw = err
+                if csw.exceptionreport or errcsw:
+                    x -= 1
+                    if x == 0:
+                        err = 'Error getting identifiers: %r' % \
+                          csw.exceptionreport.exceptions \
+                          if csw.exceptionreport else errcsw
+                        raise CswError(err)  
+                elif csw.results['returned'] != len(csw.records):
+                # case when numberOfRecordsReturned says some records were
+                # returned, but there was none or less for some reason
+                    x -= 1
+                    if x == 0:
+                        break
+                else:
+                    break
 
             if matches == 0:
                 matches = csw.results['matches']
@@ -157,7 +194,8 @@ class CswService(OwsService):
 
             kwa["startposition"] = startposition
 
-    def getrecordbyid(self, ids=[], esn="full", outputschema="gmd", **kw):
+    def getrecordbyid(self, ids=[], esn="full", outputschema="gmd",
+                      maxtrials=1, **kw):
         from owslib.csw import namespaces
         csw = self._ows(**kw)
         kwa = {
@@ -166,14 +204,29 @@ class CswService(OwsService):
             }
         # Ordinary Python version's don't support the metadata argument
         log.info('Making CSW request: getrecordbyid %r %r', ids, kwa)
-        csw.getrecordbyid(ids, **kwa)
-        if csw.exceptionreport:
-            err = 'Error getting record by id: %r' % \
-                  csw.exceptionreport.exceptions
-            #log.error(err)
-            raise CswError(err)
-        if not csw.records:
-            return
+        
+        x = maxtrials
+        # try to get a valid result until maxtrials is reached            
+        while True:
+            errcsw = None
+            try:
+                csw.getrecordbyid(ids, **kwa)
+            except Exception as err:
+                errcsw = err
+            if csw.exceptionreport or errcsw:
+                x -= 1
+                if x == 0:
+                    err = 'Error getting record by id: %r' % \
+                      csw.exceptionreport.exceptions \
+                      if csw.exceptionreport else errcsw
+                    raise CswError(err)
+            elif not csw.records:
+                x -= 1
+                if x == 0:
+                    return
+            else:
+                break
+                
         record = self._xmd(list(csw.records.values())[0])
 
         ## strip off the enclosing results container, we only want the metadata
