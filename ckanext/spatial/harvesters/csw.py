@@ -89,12 +89,14 @@ class CSWHarvester(SpatialHarvester, SingletonPlugin):
         cql = self.source_config.get('cql')
         # extract ogc filter if any
         ogcfilter = self.source_config.get('ogcfilter')
+        # get number of trials in case of server failure, if any
+        maxtrials = self.source_config.get('maxtrials', 1)
 
         log.debug('Starting gathering for %s' % url)
         guids_in_harvest = set()
         try:
             for identifier in self.csw.getidentifiers(page=10, outputschema=self.output_schema(),
-                                                      cql=cql, ogcfilter=ogcfilter):
+                                                      cql=cql, ogcfilter=ogcfilter, maxtrials=maxtrials):
                 try:
                     log.info('Got identifier %s from the CSW', identifier)
                     if identifier is None:
@@ -163,9 +165,13 @@ class CSWHarvester(SpatialHarvester, SingletonPlugin):
                                     harvest_object)
             return False
 
+        # get number of trials in case of server failure, if any
+        maxtrials = self.source_config.get('maxtrials', 1)
+        
         identifier = harvest_object.guid
         try:
-            record = self.csw.getrecordbyid([identifier], outputschema=self.output_schema())
+            record = self.csw.getrecordbyid([identifier], outputschema=self.output_schema(),
+                                            maxtrials=maxtrials)
         except Exception as e:
             self._save_object_error('Error getting the CSW record with GUID %s' % identifier, harvest_object)
             return False
