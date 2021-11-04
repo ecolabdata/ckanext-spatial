@@ -43,7 +43,7 @@ def as_owslib_constraint(constraint):
     neg = (constraint[0] == 'Not')
 
     if neg:
-        constraint.remove('Not')
+        constraint = constraint[1:]
 
     if not constraint[0] in ogc_filter_operators:
         raise ValueError("Unknow operator '{}' in ogcfilter".format(constraint[0]))
