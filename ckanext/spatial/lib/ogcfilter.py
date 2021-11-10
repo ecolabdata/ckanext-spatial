@@ -40,7 +40,7 @@ def as_owslib_constraint(constraint):
     ["Not", "PropertyIsLike", "MyProperty1", "MyValue1"]
     
     """
-    neg = (constraint[0] == 'Not')
+    neg = (constraint[0].upper() == 'NOT')
 
     if neg:
         constraint = constraint[1:]
