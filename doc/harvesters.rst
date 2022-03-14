@@ -75,7 +75,97 @@ The currently supported configuration options are:
   and spaces replaced with dashes. Setting this option to False gives the same effect as leaving it unset.
 * ``validator_profiles``: A list of string that specifies a list of validators that will be applied to the
   current harvester, overriding the global ones defined by the 'ckan.spatial.validator.profiles' option.
+* ``cql``: A string that specifies some conditions to filter harvested datasets, expressed in CQL
+  (Common Query Language).
+* ``ogcfilter``: A list of conditions to filter harvested datasets, to be expressed in OGC Filter Encoding.
+  See `OGC Filter Encoding as JSON`_ for syntax specifications.
 
+OGC Filter Encoding as JSON
+---------------------------
+
+Internally, the ``ogcfilter`` harvester configuration option is passed as a parameter to the
+`OWSLib`_ functions that effectively handle CSW query operations. As this ``constraint`` parameter
+should be a list of ``OgcExpression`` objects, expected syntax for ``ogcfilter``
+is similar to OWSLib's ``OgcExpression`` classes, albeit suited to JSON encoding.
+
+For example, this JSON configuration::
+
+    {
+        "ogcfilter": [
+            ["PropertyIsLike", "MyProperty1", "MyValue1"],
+            ["Not", "PropertyIsEqualTo", "MyProperty2", "MyValue2"]
+        ]
+    }
+
+Will be interpreted as this OWSLib constraints list::
+
+    [
+        PropertyIsLike('MyProperty1', 'MyValue1'),
+        Not([PropertyIsEqualTo('MyProperty2', 'MyValue2')])
+    ]
+
+OWSLib constraints lists are fully expanded and ``ogcfilter`` values
+should be as well. Elements of the list are combined with ``OR``.
+Each element can be an elementary condition (such as 
+``PropertyIsLike('MyProperty1', 'MyValue1')`` in OWSLib encoding
+or ``["PropertyIsLike", "MyProperty1", "MyValue1"]`` in JSON
+encoding) or a list of elementary conditions to combine with ``AND``.
+
+Therefore, if ``A``, ``B``, ``C`` and ``D`` are elementary conditions:
+
+* ``[A]`` equates to condition ``A``.
+* ``[A, B, C]`` equates to condition ``A`` **or** condition ``B`` **or** condition ``C``.
+* ``[[A, B, C]]`` equates to condition ``A`` **and** condition ``B`` **and** condition ``C``.
+* ``[A, [B, C], D]`` equates to condition ``A`` **or** condition ``B`` **and** condition ``C`` **or** condition ``D``.
+
+Elementary conditions are encoded in JSON as lists.
+
+The first element should be the name of a known OGC Filter operator (case
+sensitive): ``"PropertyIsLike"``, ``"PropertyIsEqualTo"``, ``"BBox"``, etc.
+
+Following elements are positional mandatory parameters for the
+operator, ordered and typed as expected by OWSLib for said operator::
+
+    ["PropertyIsLike", "PropertyName", "Value"]
+
+Operators parameters matrix:
+
++--------------------------------------+-------------------------+-------------+-----------+
+| 0                                    | 1                       | 2           | 3         |
++======================================+=========================+=============+===========+
+| ``'PropertyIsLike'``                 | property name           | value       |           |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'PropertyIsNull'``                 | property name           |             |           |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'PropertyIsBetween'``              | property name           | start value | end value |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'PropertyIsGreaterThanOrEqualTo'`` | property name           | value       |           |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'PropertyIsLessThanOrEqualTo'``    | property name           | value       |           |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'PropertyIsGreaterThan'``          | property name           | value       |           |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'PropertyIsNotEqualTo'``           | property name           | value       |           |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'PropertyIsEqualTo'``              | property name           | value       |           |
++--------------------------------------+------------------------ +-------------+-----------+
+| ``'BBox'``                           | list of coordinates     |             |           |
++--------------------------------------+------------------------ +-------------+-----------+
+
+[1] West-bound longitude, South-bound latitude, East-bound longitude, North-bound latitude.
+
+Additionally, the last element may be a dict of named optional parameters for the
+operator, such as::
+
+    ["PropertyIsLike", "PropertyName", "Value", {"matchCase": false}]
+
+Refer to OWSLib `owslib.fes module`_ for supported optional parameters.
+
+.. _owslib.fes module: https://github.com/geopython/OWSLib/blob/master/owslib/fes.py
+
+To negate the operator, add ``"Not"`` as first element of the list::
+
+    ["Not", "PropertyIsLike", "PropertyName", "Value"]
 
 Customizing the harvesters
 --------------------------
@@ -320,3 +410,5 @@ versions described on the previous section.
 .. _ckanext-harvest: https://github.com/okfn/ckanext-harvest
 .. _ckanext-harvest documentation: https://github.com/okfn/ckanext-harvest#the-harvesting-interface
 .. _ckanext-geodatagov: https://github.com/okfn/ckanext-geodatagov/blob/master/ckanext/geodatagov/harvesters/
+.. _OWSLib: https://geopython.github.io/OWSLib/
+
