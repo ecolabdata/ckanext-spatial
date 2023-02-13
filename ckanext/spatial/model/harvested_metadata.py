@@ -437,6 +437,7 @@ class ISOAggregationInfo(ISOElement):
             name="aggregate-dataset-name",
             search_paths=[
                 "gmd:aggregateDatasetName/gmd:CI_Citation/gmd:title/gco:CharacterString/text()",
+                "gmd:aggregateDataSetName/gmd:CI_Citation/gmd:title/gco:CharacterString/text()",
             ],
             multiplicity="0..1",
         ),
@@ -444,6 +445,7 @@ class ISOAggregationInfo(ISOElement):
             name="aggregate-dataset-identifier",
             search_paths=[
                 "gmd:aggregateDatasetIdentifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()",
+                "gmd:aggregateDataSetIdentifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()",
             ],
             multiplicity="0..1",
         ),
